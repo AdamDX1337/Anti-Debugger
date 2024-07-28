@@ -13,7 +13,6 @@
 bool Security::DebuggerCheck() {
 
     BOOL FOUND = false;
-
     BOOL DBGPresent = false;
     if (IsDebuggerPresent()) {
         DBGPresent = true;
@@ -39,7 +38,9 @@ bool Security::DebuggerCheck() {
         and eax, 0x000000FF;	//reference one byte
         mov PEB, eax;			//copy value to found
     }
-
+    if (PEB) {
+        FOUND = true;
+    }
 
     BOOL NtQuery = false;
     typedef NTSTATUS(NTAPI* NtQueryInformationProcessPtr)(
@@ -67,10 +68,11 @@ bool Security::DebuggerCheck() {
     DWORD thread_hide_from_debugger = 0x11;
     
     if (NtQueryInformationProcess == NULL) 
-    {        
+    {     
+
     }
     else {
-           //(NtSetInformationThread)(GetCurrentThread(), thread_hide_from_debugger, 0, 0, 0);
+       //(NtSetInformationThread)(GetCurrentThread(), thread_hide_from_debugger, 0, 0, 0);
     }        
     return FOUND;
 }
@@ -198,68 +200,65 @@ bool Security::VMCheck() {
         FOUND = true;
     }
         
-    
-
-    
     hKey = 0;
     dwType = REG_SZ;
     //buf[255] = { 0 };
     dwBufSize = sizeof(buf);
-        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SYSTEM\\HardwareConfig\\Current\\"), 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SYSTEM\\HardwareConfig\\Current\\"), 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
+    {
+        LSTATUS result = RegGetValue(hKey, NULL, TEXT("SystemManufacturer"), RRF_RT_REG_SZ, NULL, buf, &dwBufSize);
+        if (result == ERROR_SUCCESS)
         {
-            LSTATUS result = RegGetValue(hKey, NULL, TEXT("SystemManufacturer"), RRF_RT_REG_SZ, NULL, buf, &dwBufSize);
-            if (result == ERROR_SUCCESS)
-            {
-                if (strcmp(buf, "Microsoft Corporation") == 0)
-                    FOUND = true;
-            }
-        }    
-    
-        hKey = 0;  
-        dwType = REG_SZ; 
-        //buf[255] = { 0 };  
-        dwBufSize = sizeof(buf);
-
-        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SYSTEM\\HardwareConfig\\Current\\"), 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
-        {
-            LSTATUS result = RegGetValue(hKey, NULL, TEXT("BIOSVendor"), RRF_RT_REG_SZ, NULL, buf, &dwBufSize);
-            if (result == ERROR_SUCCESS)
-            {
-                if (strcmp(buf, "Microsoft Corporation") == 0)
-                    FOUND = true;
-            }
-        }    
-    
-        hKey = 0;
-        dwType = REG_SZ;
-        //buf[255] = { 0 };
-        dwBufSize = sizeof(buf);
-
-        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SYSTEM\\HardwareConfig\\Current\\"), 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
-        {
-            LSTATUS result = RegGetValue(hKey, NULL, TEXT("SystemFamily"), RRF_RT_REG_SZ, NULL, buf, &dwBufSize);
-            if (result == ERROR_SUCCESS)
-            {
-                if (strcmp(buf, "Virtual Machine") == 0)
-                    FOUND = true;
-            }
+            if (strcmp(buf, "Microsoft Corporation") == 0)
+                FOUND = true;
         }
-   
-        hKey = 0;
-        dwType = REG_SZ;
-        //buf[255] = { 0 };
-        dwBufSize = sizeof(buf);
+    }    
+    
+    hKey = 0;
+    dwType = REG_SZ;
+    //buf[255] = { 0 };  
+    dwBufSize = sizeof(buf);
 
-        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SYSTEM\\HardwareConfig\\Current\\"), 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SYSTEM\\HardwareConfig\\Current\\"), 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
+    {
+        LSTATUS result = RegGetValue(hKey, NULL, TEXT("BIOSVendor"), RRF_RT_REG_SZ, NULL, buf, &dwBufSize);
+        if (result == ERROR_SUCCESS)
         {
-            LSTATUS result = RegGetValue(hKey, NULL, TEXT("SystemProductName"), RRF_RT_REG_SZ, NULL, buf, &dwBufSize);
-            if (result == ERROR_SUCCESS)
-            {
-                if (strcmp(buf, "Virtual Machine") == 0)
-                    FOUND = true;
-            }
+            if (strcmp(buf, "Microsoft Corporation") == 0)
+                FOUND = true;
         }
+    }
 
+    hKey = 0;
+    dwType = REG_SZ;
+    //buf[255] = { 0 };
+    dwBufSize = sizeof(buf);
+
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SYSTEM\\HardwareConfig\\Current\\"), 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
+    {
+        LSTATUS result = RegGetValue(hKey, NULL, TEXT("SystemFamily"), RRF_RT_REG_SZ, NULL, buf, &dwBufSize);
+        if (result == ERROR_SUCCESS)
+        {
+            if (strcmp(buf, "Virtual Machine") == 0)
+                FOUND = true;
+        }
+    }
+
+    hKey = 0;
+    dwType = REG_SZ;
+    //buf[255] = { 0 };
+    dwBufSize = sizeof(buf);
+
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SYSTEM\\HardwareConfig\\Current\\"), 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
+    {
+        LSTATUS result = RegGetValue(hKey, NULL, TEXT("SystemProductName"), RRF_RT_REG_SZ, NULL, buf, &dwBufSize);
+        if (result == ERROR_SUCCESS)
+        {
+            if (strcmp(buf, "Virtual Machine") == 0)
+                FOUND = true;
+        }
+    }
+    
 
     
 
